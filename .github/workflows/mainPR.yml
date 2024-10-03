@@ -1,0 +1,36 @@
+name: Update Start Date on Assignee
+on:
+  issues:
+    types:
+      - assigned
+
+jobs:
+  update_start_date:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # contents 권한으로 프로젝트 필드 수정 권한 확보
+    steps:
+      - name: Set start date to today in project field
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          today=$(date +'%Y-%m-%d')
+
+          # 프로젝트 필드 업데이트를 위한 GraphQL 쿼리 실행
+          gh api graphql -f query='
+          mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: String!) {
+            updateProjectV2ItemFieldValue(input: {
+              projectId: $projectId,
+              itemId: $itemId,
+              fieldId: $fieldId,
+              value: $value
+            }) {
+              projectV2Item {
+                id
+              }
+            }
+          }' \
+          -F projectId="PROJECT_ID" \
+          -F itemId="${{ github.event.issue.node_id }}" \
+          -F fieldId="FIELD_ID" \
+          -F value="$today"
